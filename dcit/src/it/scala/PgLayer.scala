@@ -17,13 +17,14 @@ object LayersPostgis {
   def configFor(pgContainer: PostgreSQLContainer): DoobieConfig =
     DoobieConfig(pgContainer.jdbcUrl, pgContainer.driverClassName, pgContainer.username, pgContainer.password)
 
+  lazy val container = PostgreSQLContainer(
+    dockerImageNameOverride =
+      DockerImageName.parse(s"kartoza/postgis:11.5-2.8").asCompatibleSubstituteFor("postgres")
+  )
+
   val postgresLayer: ZLayer[Blocking, Nothing, Postgres] =
     ZManaged.make {
       effectBlocking {
-        val container = PostgreSQLContainer(
-          dockerImageNameOverride =
-            DockerImageName.parse(s"kartoza/postgis:11.5-2.8").asCompatibleSubstituteFor("postgres")
-        )
         println(s"start postgis")
         container.start()
         container
