@@ -2,6 +2,7 @@ import LayersPostgis.Postgres
 import com.dimafeng.testcontainers.PostgreSQLContainer
 import org.testcontainers.utility.DockerImageName
 import zio.blocking.{Blocking, effectBlocking}
+import zio.test.TestAspect
 import zio.test.TestAspect.before
 import zio.{Has, ZIO, ZLayer, ZManaged}
 
@@ -36,9 +37,16 @@ object LayersPostgis {
 }
 
 object MigrationAspects {
+  def migrationDirect: ZIO[Postgres, Throwable, Unit] =
+    for {
+      pg <- ZIO.service[PostgreSQLContainer]
+      _ <- ZIO.succeed(println(s"migrationA"))
+      _  <- FlywayMigrator.initDb(LayersPostgis.configFor(pg))
+    } yield ()
   def migration: ZIO[Postgres, Throwable, Unit] =
     for {
       pg <- ZIO.service[PostgreSQLContainer]
+      _ <- ZIO.succeed(println(s"migrationB"))
       _  <- FlywayMigrator.initDb(LayersPostgis.configFor(pg))
     } yield ()
 

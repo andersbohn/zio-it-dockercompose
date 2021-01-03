@@ -11,6 +11,7 @@ object FlywayMigrator {
    */
   def initDb(cfg: DoobieConfig): Task[Unit] =
     ZIO.effect {
+/*
       val fw =
         Flyway
           .configure()
@@ -19,6 +20,7 @@ object FlywayMigrator {
           .baselineOnMigrate(true)
           .load()
       fw.migrate()
+*/
     }.unit
 
   def initDbAll: RIO[Has[DoobieConfig], Unit] = ZIO.access(x => initDb(x.get))

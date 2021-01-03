@@ -1,3 +1,4 @@
+import LayersPostgis.Postgres
 import zio._
 import zio.blocking.Blocking
 import zio.test.Assertion._
@@ -8,7 +9,8 @@ object PgItTest extends DefaultRunnableSpec {
 
   type TestEnv = zio.test.environment.TestEnvironment
 
-  val suiteLayers = zio.test.environment.testEnvironment ++ (Blocking.live >>> LayersPostgis.postgresLayer)
+  lazy val pgLayer: ZLayer[Any, Nothing, Postgres] = Blocking.live >>> LayersPostgis.postgresLayer
+  lazy  val suiteLayers = zio.test.environment.testEnvironment ++ pgLayer
 
   def aam(i:Int): URIO[ServiceModule.Aa,String] = ZIO.accessM(_.get.helloA(i))
 
@@ -22,8 +24,10 @@ object PgItTest extends DefaultRunnableSpec {
       }.provideLayer(ServiceModule.Aa.fake),
       testM("testM hello2") {
         (for {
+// FIXME works:
+          _ <- MigrationAspects.migrationDirect
           validationresponse <- Task.succeed("hello")
         } yield assert(validationresponse)(equalTo("hello")))
-      }
-    ).provideCustomLayer(suiteLayers)
+      } // FIXME doesn't work: .provideSomeLayer(pgLayer) @@ MigrationAspects.migrate
+    ).provideCustomLayer(suiteLayers) // FIXME doesn't work: @@ MigrationAspects.migrate
 }
