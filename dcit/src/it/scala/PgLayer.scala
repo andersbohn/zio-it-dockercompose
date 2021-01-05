@@ -2,8 +2,8 @@ import LayersPostgis.Postgres
 import com.dimafeng.testcontainers.PostgreSQLContainer
 import org.testcontainers.utility.DockerImageName
 import zio.blocking.{Blocking, effectBlocking}
-import zio.test.TestAspect
 import zio.test.TestAspect.before
+import zio.test.{TestAspect, TestAspectPoly}
 import zio.{Has, ZIO, ZLayer, ZManaged}
 
 final case class DoobieConfig(url: String, driver: String, user: String, password: String) {
@@ -18,22 +18,24 @@ object LayersPostgis {
   def configFor(pgContainer: PostgreSQLContainer): DoobieConfig =
     DoobieConfig(pgContainer.jdbcUrl, pgContainer.driverClassName, pgContainer.username, pgContainer.password)
 
-  lazy val container = PostgreSQLContainer(
-    dockerImageNameOverride =
-      DockerImageName.parse(s"kartoza/postgis:11.5-2.8").asCompatibleSubstituteFor("postgres")
-  )
+  val postgresLayer: ZLayer[Blocking, Nothing, Postgres] = {
 
-  val postgresLayer: ZLayer[Blocking, Nothing, Postgres] =
+    lazy val container = PostgreSQLContainer(
+      dockerImageNameOverride =
+        DockerImageName.parse(s"kartoza/postgis:11.5-2.8").asCompatibleSubstituteFor("postgres")
+    )
+
     ZManaged.make {
       effectBlocking {
         println(s"start postgis")
         container.start()
         container
       }.orDie
-    }(container => effectBlocking{
+    }(container => effectBlocking {
       println(s"stopit postgis")
       container.stop()
     }.orDie).toLayer
+  }
 }
 
 object MigrationAspects {
@@ -41,16 +43,17 @@ object MigrationAspects {
     for {
       pg <- ZIO.service[PostgreSQLContainer]
       _ <- ZIO.succeed(println(s"migrationA"))
-      _  <- FlywayMigrator.initDb(LayersPostgis.configFor(pg))
+      _ <- FlywayMigrator.initDb(LayersPostgis.configFor(pg))
     } yield ()
+
   def migration: ZIO[Postgres, Throwable, Unit] =
     for {
       pg <- ZIO.service[PostgreSQLContainer]
       _ <- ZIO.succeed(println(s"migrationB"))
-      _  <- FlywayMigrator.initDb(LayersPostgis.configFor(pg))
+      _ <- FlywayMigrator.initDb(LayersPostgis.configFor(pg))
     } yield ()
 
-  def migrate =
+  def migrate: TestAspect[Nothing, Postgres, Nothing, Any] =
     before(migration.orDie)
 }
 
