@@ -25,5 +25,5 @@ object PgItTest extends DefaultRunnableSpec {
           validationresponse <- Task.succeed("hello")
         } yield assert(validationresponse)(equalTo("hello")))
       }
-    ))).provideCustomLayer(suiteLayers)
+    ))).provideCustomLayerShared(suiteLayers)
 }
