@@ -7,15 +7,13 @@ import zio.test._
 
 object PgItTest extends DefaultRunnableSpec {
 
-  type TestEnv = zio.test.environment.TestEnvironment
-
   lazy val pgLayer: ZLayer[Any, Nothing, Postgres] = Blocking.live >>> LayersPostgis.postgresLayer
   lazy val suiteLayers = zio.test.environment.testEnvironment ++ pgLayer
 
-  def aam(i:Int): URIO[ServiceModule.Aa,String] = ZIO.accessM(_.get.helloA(i))
+  def aam(i: Int): URIO[ServiceModule.Aa, String] = ZIO.accessM(_.get.helloA(i))
 
   override def spec =
-    (suite("zio test suite with docker postgis")(
+    TestAspect.sequential(MigrationAspects.migrate(suite("zio test suite with docker postgis")(
       testM("testM hello1") {
         (for {
           _ <- aam(11)
@@ -27,5 +25,5 @@ object PgItTest extends DefaultRunnableSpec {
           validationresponse <- Task.succeed("hello")
         } yield assert(validationresponse)(equalTo("hello")))
       }
-    ) @@ TestAspect.sequential  @@ MigrationAspects.migrate).provideCustomLayer(suiteLayers)
+    ))).provideCustomLayer(suiteLayers)
 }
